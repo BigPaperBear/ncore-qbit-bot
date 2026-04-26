@@ -1,0 +1,7 @@
+services:
+  ncore-bot:
+    build: .
+    container_name: ncore-bot
+    restart: always
+    volumes:
+      - ./config.py:/app/config.py
