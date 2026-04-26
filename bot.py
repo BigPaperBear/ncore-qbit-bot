@@ -13,6 +13,7 @@ logging.basicConfig(
     format='%(asctime)s %(levelname)s %(message)s',
     level=logging.INFO,
 )
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 SELECTING = 0
 SELECTING_CATEGORY = 1
