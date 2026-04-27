@@ -7,10 +7,9 @@ A Telegram bot that searches nCore and adds torrents to qBittorrent from your ph
 ## How it works
 
 1. Send `/dl <title>` in Telegram
-2. The bot searches nCore and lists the top 5 results sorted by seeders
-3. Pick a number (1-5)
-4. Choose where to save it: Movie or Series
-5. The bot adds it to qBittorrent and sends you a message when it finishes
+2. Choose Movie or Series
+3. Tap the result you want (sorted by seeders)
+4. The bot adds it to qBittorrent and notifies you when it's done
 
 ---
 
@@ -109,12 +108,10 @@ docker-compose up -d --build
 
 | Command | What it does |
 |---|---|
-| `/dl <title>` | Search nCore (HD movies and series) and download |
-| `/dl -movie <title>` | Search in movie categories only (hd_hun, hd) |
-| `/dl -series <title>` | Search in series categories only (hdser_hun, hdser) |
-| `/recent` | Show the last 5 torrents added to qBittorrent |
+| `/dl <title>` | Search nCore and download |
+| `/recent` | Show the last 5 torrents and their status |
 | `/myid` | Show your Telegram user ID |
-| `/start` | Show a short guide on how to use the bot |
+| `/start` | Show how to use the bot |
 | `/help` | List all commands |
 | `/cancel` | Cancel the current search |
 
@@ -123,28 +120,21 @@ docker-compose up -d --build
 ## Example
 
 ```
-You:  /dl -series Breaking Bad
-Bot:  Searching [series]: Breaking Bad...
+You:  /dl Breaking Bad
 
-Bot:  1. Breaking Bad S01 1080p HUN
-         Seeds: 42 - Size: 28.5 GB
+Bot:  "Breaking Bad" — movie or series?
+      [ Movie ]  [ Series ]
 
-      2. Breaking Bad S01 720p HUN
-         Seeds: 18 - Size: 12.1 GB
+You:  Series
 
-      Which one should I download? (1-2)
+Bot:  Choose one:
+      [ Breaking Bad S01 1080p HUN · 42s · 28.5 GB ]
+      [ Breaking Bad S01 720p HUN  · 18s · 12.1 GB ]
+      [ Cancel ]
 
-You:  1
-
-Bot:  Where should I save it?
-      1. Movie (F:\Downloads\Movies)
-      2. Series (F:\Downloads\Series)
-
-You:  2
+You:  Breaking Bad S01 1080p HUN · 42s · 28.5 GB
 
 Bot:  Starting download: Breaking Bad S01 1080p HUN...
-      Added: Breaking Bad S01 1080p HUN
-      I'll notify you when it's done!
 
       ... later ...
 
@@ -168,8 +158,7 @@ Each person only gets a notification for their own downloads.
 ## Troubleshooting
 
 **No results found**
-- Try `/dl -series` or `/dl -movie` to search in a specific category
-- Check if `QUALITY_FILTER` in `config.py` is too strict - set it to `""` to turn it off
+- Check if `QUALITY_FILTER` in `config.py` is too strict. Set it to `""` to turn it off.
 
 **SSL or connection error**
 - The bot retries automatically with a fresh login. If it still fails, check your network connection and whether nCore is accessible in your browser.
