@@ -5,3 +5,4 @@ services:
     restart: always
     volumes:
       - ./config.py:/app/config.py
+      - ./data:/app/data

@@ -1,6 +1,10 @@
 import logging
+from pathlib import Path
 
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ConversationHandler
+from telegram.ext import (
+    Application, CommandHandler, CallbackQueryHandler, ConversationHandler,
+    PicklePersistence,
+)
 
 import config
 from handlers import (
@@ -18,7 +22,9 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 def main():
-    app = Application.builder().token(config.TELEGRAM_TOKEN).build()
+    Path("data").mkdir(exist_ok=True)
+    persistence = PicklePersistence(filepath="data/bot_data.pickle")
+    app = Application.builder().token(config.TELEGRAM_TOKEN).persistence(persistence).build()
 
     app.add_handler(CommandHandler('start', start_command))
     app.add_handler(CommandHandler('help', help_command))
