@@ -43,6 +43,7 @@ def main():
             ],
         },
         fallbacks=[CommandHandler('cancel', cancel)],
+        conversation_timeout=300,
     )
     app.add_handler(conv)
     app.job_queue.run_repeating(check_downloads, interval=60, first=10)
