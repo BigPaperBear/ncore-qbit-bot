@@ -6,10 +6,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 import qbittorrent
 
 
-def setup_function():
-    qbittorrent._session_cache = None
-
-
 class FakeConfig:
     QBIT_URL = 'http://localhost:8080'
     QBIT_USERNAME = 'admin'
