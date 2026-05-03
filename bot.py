@@ -3,7 +3,7 @@ from pathlib import Path
 
 from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler, ConversationHandler,
-    PicklePersistence,
+    PicklePersistence, filters,
 )
 
 import config
@@ -26,13 +26,15 @@ def main():
     persistence = PicklePersistence(filepath="data/bot_data.pickle")
     app = Application.builder().token(config.TELEGRAM_TOKEN).persistence(persistence).build()
 
+    allowed = filters.User(user_id=config.ALLOWED_USERS)
+
     app.add_handler(CommandHandler('start', start_command))
     app.add_handler(CommandHandler('help', help_command))
-    app.add_handler(CommandHandler('recent', recent_command))
+    app.add_handler(CommandHandler('recent', recent_command, filters=allowed))
     app.add_handler(CommandHandler('myid', myid_command))
 
     conv = ConversationHandler(
-        entry_points=[CommandHandler('dl', dl_command)],
+        entry_points=[CommandHandler('dl', dl_command, filters=allowed)],
         states={
             SELECTING_TYPE: [
                 CallbackQueryHandler(type_handler, pattern='^type:'),

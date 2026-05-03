@@ -15,15 +15,7 @@ SELECTING_RESULT = 1
 MAX_MISSING_CHECKS = 10
 
 
-def _allowed(update: Update) -> bool:
-    return update.effective_user.id in config.ALLOWED_USERS
-
-
 async def dl_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not _allowed(update):
-        await update.message.reply_text("You don't have permission to use this bot.")
-        return ConversationHandler.END
-
     query = ' '.join(context.args).strip()
     if not query:
         await update.message.reply_text("Usage: /dl <title>")
@@ -141,10 +133,6 @@ async def check_downloads(context: ContextTypes.DEFAULT_TYPE):
 
 
 async def recent_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not _allowed(update):
-        await update.message.reply_text("You don't have permission to use this bot.")
-        return
-
     try:
         torrents = qbittorrent.get_recent_torrents(config)
     except Exception as e:

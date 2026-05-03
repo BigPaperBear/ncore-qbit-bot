@@ -10,9 +10,9 @@ from telegram.ext import ConversationHandler
 import handlers
 
 
-def _make_update(user_id=42, callback_data=None):
+def _make_update(callback_data=None):
     update = MagicMock()
-    update.effective_user.id = user_id
+    update.effective_user.id = 42
     update.effective_chat.id = 100
     update.message.reply_text = AsyncMock()
     update.callback_query.answer = AsyncMock()
@@ -29,22 +29,10 @@ def _make_context(args=None, user_data=None):
 
 
 @pytest.mark.asyncio
-async def test_dl_command_rejects_disallowed_user():
-    update = _make_update(user_id=999)
-    context = _make_context(args=['Inception'])
-    with patch.object(handlers.config, 'ALLOWED_USERS', [42]):
-        result = await handlers.dl_command(update, context)
-    assert result == ConversationHandler.END
-    update.message.reply_text.assert_awaited_once()
-    assert "permission" in update.message.reply_text.call_args[0][0].lower()
-
-
-@pytest.mark.asyncio
 async def test_dl_command_with_no_query_shows_usage():
     update = _make_update()
     context = _make_context(args=[])
-    with patch.object(handlers.config, 'ALLOWED_USERS', [42]):
-        result = await handlers.dl_command(update, context)
+    result = await handlers.dl_command(update, context)
     assert result == ConversationHandler.END
     assert 'Usage' in update.message.reply_text.call_args[0][0]
 
@@ -53,8 +41,7 @@ async def test_dl_command_with_no_query_shows_usage():
 async def test_dl_command_with_query_asks_movie_or_series():
     update = _make_update()
     context = _make_context(args=['Inception'])
-    with patch.object(handlers.config, 'ALLOWED_USERS', [42]):
-        result = await handlers.dl_command(update, context)
+    result = await handlers.dl_command(update, context)
     assert result == handlers.SELECTING_TYPE
     assert context.user_data['query'] == 'Inception'
 
