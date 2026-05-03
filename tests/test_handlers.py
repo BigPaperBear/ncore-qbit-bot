@@ -1,10 +1,6 @@
-import os
-import sys
 from unittest.mock import patch, AsyncMock, MagicMock
 
 import pytest
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from telegram.ext import ConversationHandler
 import handlers
