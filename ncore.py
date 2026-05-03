@@ -70,76 +70,93 @@ def _filter_and_sort(results, quality, top_n):
     return sorted(results, key=seed_key, reverse=True)[:top_n]
 
 
-_opener = None
+class NCoreClient:
+    def __init__(self, config, opener=None):
+        self.config = config
+        self.opener = opener
+
+    def _login(self):
+        passhash = getattr(self.config, 'NCORE_PASSHASH', '')
+        if not passhash:
+            raise RuntimeError(
+                "NCORE_PASSHASH is required — nCore uses reCAPTCHA so username/password login is not possible. "
+                "Get your 'pass' cookie value from nCore and set NCORE_PASSHASH in config.py."
+            )
+
+        cookie = f"nyelv=hu; stilus=brutecore; nick={self.config.NCORE_USERNAME}; pass={passhash}"
+        jar = CookieJar()
+        opener = build_opener(HTTPCookieProcessor(jar))
+        opener.addheaders = [('User-agent', 'Mozilla/5.0'), ('cookie', cookie)]
+        resp = opener.open(BASE_URL + '/index.php')
+        if 'login.php' in resp.geturl():
+            raise RuntimeError(
+                "ncore login failed — NCORE_PASSHASH is invalid or expired, update it in config.py"
+            )
+        return opener
+
+    def _ensure_opener(self):
+        if self.opener is None:
+            self.opener = self._login()
+        return self.opener
+
+    def reset(self):
+        self.opener = None
+
+    def search(self, query, categories=None):
+        cats = categories or self.config.CATEGORIES
+        for attempt in range(2):
+            try:
+                opener = self._ensure_opener()
+                all_results = []
+                for page in range(1, self.config.MAX_PAGES + 1):
+                    url = (
+                        f"{BASE_URL}/torrents.php?miszerint=seeders&hogyan=DESC"
+                        f"&tipus=kivalasztottak_kozott&mire={quote_plus(query)}"
+                        f"&kivalasztott_tipus={cats}&oldal={page}"
+                    )
+                    resp = opener.open(url)
+                    html = resp.read().decode('utf-8')
+
+                    parser = NCoreParser(BASE_URL)
+                    parser.feed(html)
+                    parser.close()
+
+                    if not parser.results:
+                        break
+                    all_results.extend(parser.results)
+
+                return _filter_and_sort(all_results, self.config.QUALITY_FILTER, self.config.TOP_RESULTS)
+            except Exception:
+                if attempt == 0:
+                    self.reset()
+                else:
+                    raise
+
+    def download_torrent(self, link):
+        for attempt in range(2):
+            try:
+                opener = self._ensure_opener()
+                return opener.open(link).read()
+            except Exception:
+                if attempt == 0:
+                    self.reset()
+                else:
+                    raise
 
 
-def _login(config):
-    passhash = getattr(config, 'NCORE_PASSHASH', '')
-    if not passhash:
-        raise RuntimeError(
-            "NCORE_PASSHASH is required — nCore uses reCAPTCHA so username/password login is not possible. "
-            "Get your 'pass' cookie value from nCore and set NCORE_PASSHASH in config.py."
-        )
+_default_client = None
 
-    cookie = f"nyelv=hu; stilus=brutecore; nick={config.NCORE_USERNAME}; pass={passhash}"
-    jar = CookieJar()
-    opener = build_opener(HTTPCookieProcessor(jar))
-    opener.addheaders = [('User-agent', 'Mozilla/5.0'), ('cookie', cookie)]
-    resp = opener.open(BASE_URL + '/index.php')
-    if 'login.php' in resp.geturl():
-        raise RuntimeError(
-            "ncore login failed — NCORE_PASSHASH is invalid or expired, update it in config.py"
-        )
-    return opener
 
-def _get_opener(config):
-    global _opener
-    if _opener is None:
-        _opener = _login(config)
-    return _opener
+def _client(config):
+    global _default_client
+    if _default_client is None:
+        _default_client = NCoreClient(config)
+    return _default_client
 
-def reset_session():
-    global _opener
-    _opener = None
 
 def search(query, config, categories=None):
-    cats = categories or config.CATEGORIES
-    for attempt in range(2):
-        try:
-            opener = _get_opener(config)
-            all_results = []
-            for page in range(1, config.MAX_PAGES + 1):
-                url = (
-                    f"{BASE_URL}/torrents.php?miszerint=seeders&hogyan=DESC"
-                    f"&tipus=kivalasztottak_kozott&mire={quote_plus(query)}"
-                    f"&kivalasztott_tipus={cats}&oldal={page}"
-                )
-                resp = opener.open(url)
-                html = resp.read().decode('utf-8')
-
-                parser = NCoreParser(BASE_URL)
-                parser.feed(html)
-                parser.close()
-
-                if not parser.results:
-                    break
-                all_results.extend(parser.results)
-
-            return _filter_and_sort(all_results, config.QUALITY_FILTER, config.TOP_RESULTS)
-        except Exception:
-            if attempt == 0:
-                reset_session()
-            else:
-                raise
+    return _client(config).search(query, categories=categories)
 
 
 def download_torrent(link, config):
-    for attempt in range(2):
-        try:
-            opener = _get_opener(config)
-            return opener.open(link).read()
-        except Exception:
-            if attempt == 0:
-                reset_session()
-            else:
-                raise
+    return _client(config).download_torrent(link)
