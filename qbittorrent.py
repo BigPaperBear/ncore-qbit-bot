@@ -34,11 +34,6 @@ def add_torrent(torrent_data: bytes, save_path: str, config, category: str = '')
     return resp.text
 
 
-def get_all_hashes(config) -> set:
-    torrents = _request(config, 'GET', f"{config.QBIT_URL}/api/v2/torrents/info").json()
-    return {t['hash'] for t in torrents}
-
-
 def get_torrent_progress(torrent_hash: str, config):
     torrents = _request(
         config, 'GET', f"{config.QBIT_URL}/api/v2/torrents/info",

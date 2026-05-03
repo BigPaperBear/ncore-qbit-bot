@@ -1,4 +1,3 @@
-import asyncio
 import logging
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -8,6 +7,7 @@ import config
 import ncore
 import qbittorrent
 from formatters import _format_button_text, _format_size, _state_label
+from infohash import compute_infohash
 
 SELECTING_TYPE = 0
 SELECTING_RESULT = 1
@@ -80,27 +80,19 @@ async def result_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await callback.edit_message_text(f'Starting download: {torrent["name"]}...')
 
     try:
-        hashes_before = qbittorrent.get_all_hashes(config)
         torrent_data = ncore.download_torrent(torrent['link'], config)
+        torrent_hash = compute_infohash(torrent_data)
         qbittorrent.add_torrent(torrent_data, save_path, config, category)
     except Exception as e:
         logging.exception("download failed")
         await callback.edit_message_text(f'Error: {e}')
         return ConversationHandler.END
 
-    await asyncio.sleep(3)
-    new_hashes = qbittorrent.get_all_hashes(config) - hashes_before
-
-    if new_hashes:
-        torrent_hash = next(iter(new_hashes))
-        context.application.bot_data.setdefault('tracking', {})[torrent_hash] = (
-            update.effective_chat.id, torrent['name']
-        )
-        logging.info("Tracking torrent hash %s for chat %s", torrent_hash, update.effective_chat.id)
-        await callback.edit_message_text(f"Added: {torrent['name']}\nI'll notify you when it's done! 🔔")
-    else:
-        logging.warning("Could not find new torrent hash after adding")
-        await callback.edit_message_text(f"Added: {torrent['name']}")
+    context.application.bot_data.setdefault('tracking', {})[torrent_hash] = (
+        update.effective_chat.id, torrent['name']
+    )
+    logging.info("Tracking torrent hash %s for chat %s", torrent_hash, update.effective_chat.id)
+    await callback.edit_message_text(f"Added: {torrent['name']}\nI'll notify you when it's done! 🔔")
     return ConversationHandler.END
 
 
