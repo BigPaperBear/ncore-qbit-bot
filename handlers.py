@@ -12,6 +12,8 @@ from infohash import compute_infohash
 SELECTING_TYPE = 0
 SELECTING_RESULT = 1
 
+MAX_MISSING_CHECKS = 10
+
 
 def _allowed(update: Update) -> bool:
     return update.effective_user.id in config.ALLOWED_USERS
@@ -88,9 +90,11 @@ async def result_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await callback.edit_message_text(f'Error: {e}')
         return ConversationHandler.END
 
-    context.application.bot_data.setdefault('tracking', {})[torrent_hash] = (
-        update.effective_chat.id, torrent['name']
-    )
+    context.application.bot_data.setdefault('tracking', {})[torrent_hash] = {
+        'chat_id': update.effective_chat.id,
+        'name': torrent['name'],
+        'missing': 0,
+    }
     logging.info("Tracking torrent hash %s for chat %s", torrent_hash, update.effective_chat.id)
     await callback.edit_message_text(f"Added: {torrent['name']}\nI'll notify you when it's done! 🔔")
     return ConversationHandler.END
@@ -113,17 +117,26 @@ async def check_downloads(context: ContextTypes.DEFAULT_TYPE):
     if not tracking:
         return
     logging.info("Checking %d tracked torrent(s)", len(tracking))
-    completed = []
-    for torrent_hash, (chat_id, name) in tracking.items():
+    finished = []
+    for torrent_hash, entry in tracking.items():
         try:
             progress = qbittorrent.get_torrent_progress(torrent_hash, config)
-            logging.info("  %s -> progress: %s", name[:40], progress)
-            if progress is not None and progress >= 1.0:
-                await context.bot.send_message(chat_id=chat_id, text=f"✅ Download complete: {name}")
-                completed.append(torrent_hash)
+            logging.info("  %s -> progress: %s", entry['name'][:40], progress)
+            if progress is None:
+                entry['missing'] += 1
+                if entry['missing'] >= MAX_MISSING_CHECKS:
+                    logging.warning("Dropping %s: missing from qBit for %d checks",
+                                    entry['name'], entry['missing'])
+                    finished.append(torrent_hash)
+                continue
+            entry['missing'] = 0
+            if progress >= 1.0:
+                await context.bot.send_message(chat_id=entry['chat_id'],
+                                               text=f"✅ Download complete: {entry['name']}")
+                finished.append(torrent_hash)
         except Exception:
             logging.exception("progress check failed for %s", torrent_hash)
-    for torrent_hash in completed:
+    for torrent_hash in finished:
         del tracking[torrent_hash]
 
 
