@@ -54,7 +54,7 @@ def test_filter_keeps_1080p_only():
         {'name': 'Inception 2010 1080p BluRay', 'seeds': '100', 'size': '10 GB', 'link': 'a'},
         {'name': 'Inception 2010 720p BluRay', 'seeds': '200', 'size': '5 GB', 'link': 'b'},
     ]
-    filtered = _filter_and_sort(results, quality='1080', top_n=5)
+    filtered = _filter_and_sort(results, quality=['1080'], top_n=5)
     assert len(filtered) == 1
     assert '1080p' in filtered[0]['name']
 
@@ -65,7 +65,7 @@ def test_filter_sorts_by_seeds_descending():
         {'name': 'Movie B 1080p', 'seeds': '200', 'size': '8 GB', 'link': 'b'},
         {'name': 'Movie C 1080p', 'seeds': '50', 'size': '6 GB', 'link': 'c'},
     ]
-    filtered = _filter_and_sort(results, quality='1080', top_n=5)
+    filtered = _filter_and_sort(results, quality=['1080'], top_n=5)
     assert filtered[0]['seeds'] == '200'
     assert filtered[1]['seeds'] == '50'
 
@@ -75,5 +75,5 @@ def test_filter_respects_top_n():
         {'name': f'Movie {i} 1080p', 'seeds': str(i), 'size': '5 GB', 'link': str(i)}
         for i in range(10)
     ]
-    filtered = _filter_and_sort(results, quality='1080', top_n=3)
+    filtered = _filter_and_sort(results, quality=['1080'], top_n=3)
     assert len(filtered) == 3

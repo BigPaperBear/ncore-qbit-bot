@@ -4,7 +4,6 @@ from html.parser import HTMLParser
 from http.cookiejar import CookieJar
 
 BASE_URL = 'https://ncore.pro'
-MAX_PAGES = 5
 
 
 class NCoreParser(HTMLParser):
@@ -59,7 +58,8 @@ class NCoreParser(HTMLParser):
 
 
 def _filter_and_sort(results, quality, top_n):
-    filtered = results if not quality else [r for r in results if quality.lower() in r.get('name', '').lower()]
+    if quality:
+        results = [r for r in results if any(q.lower() in r.get('name', '').lower() for q in quality)]
 
     def seed_key(r):
         try:
@@ -67,8 +67,7 @@ def _filter_and_sort(results, quality, top_n):
         except (ValueError, TypeError):
             return 0
 
-    filtered.sort(key=seed_key, reverse=True)
-    return filtered[:top_n]
+    return sorted(results, key=seed_key, reverse=True)[:top_n]
 
 
 _opener = None
@@ -109,7 +108,7 @@ def search(query, config, categories=None):
         try:
             opener = _get_opener(config)
             all_results = []
-            for page in range(1, MAX_PAGES + 1):
+            for page in range(1, config.MAX_PAGES + 1):
                 url = (
                     f"{BASE_URL}/torrents.php?miszerint=seeders&hogyan=DESC"
                     f"&tipus=kivalasztottak_kozott&mire={quote_plus(query)}"

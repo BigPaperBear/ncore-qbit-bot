@@ -31,5 +31,6 @@ CATEGORIES = "hd_hun,hd"
 #   xvidser_hun Sorozat SD/HU
 #   xvidser     Sorozat SD/EN
 CATEGORIES_SERIES = "hdser_hun,hdser"
-QUALITY_FILTER = ""     # e.g. "1080" to only show 1080p results, or "" for all
+QUALITY_FILTER = []     # e.g. ["1080", "2160"] to only show those qualities, or [] for all
 TOP_RESULTS = 5
+MAX_PAGES = 5
