@@ -18,7 +18,7 @@ def _session(config):
 def _request(config, method, url, **kwargs):
     global _session_cache
     resp = getattr(_session(config), method.lower())(url, **kwargs)
-    if resp.status_code == 403:
+    if resp.status_code in (401, 403):
         _session_cache = None
         resp = getattr(_session(config), method.lower())(url, **kwargs)
     resp.raise_for_status()
