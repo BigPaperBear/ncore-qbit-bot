@@ -60,8 +60,9 @@ QBIT_CATEGORY_SERIES = "Series"
 # Search
 CATEGORIES = "hd_hun,hd"
 CATEGORIES_SERIES = "hdser_hun,hdser"
-QUALITY_FILTER = ""     # e.g. "1080" to only show 1080p results, or "" for all
-TOP_RESULTS = 5
+QUALITY_FILTER = []     # e.g. ["1080", "2160"] to only show those qualities, or [] for all
+TOP_RESULTS = 5         # how many results to show in Telegram (after sorting by seeders)
+MAX_PAGES = 5           # how many nCore search-result pages to fetch
 ```
 
 **How to find your Telegram user ID:** Start the bot, send `/myid`, and it will reply with your ID. Add that number to `ALLOWED_USERS`.
@@ -158,7 +159,7 @@ Each person only gets a notification for their own downloads.
 ## Troubleshooting
 
 **No results found**
-- Check if `QUALITY_FILTER` in `config.py` is too strict. Set it to `""` to turn it off.
+- Check if `QUALITY_FILTER` in `config.py` is too strict. Set it to `[]` to turn it off.
 
 **SSL or connection error**
 - The bot retries automatically with a fresh login. If it still fails, check your network connection and whether nCore is accessible in your browser.
@@ -168,4 +169,4 @@ Each person only gets a notification for their own downloads.
 
 **No notification when download finishes**
 - Run `docker-compose logs -f` and look for lines with `Checking N tracked torrent(s)` to see if the bot is checking progress.
-- The bot checks every 60 seconds and sends the message as soon as progress hits 100%.
+- The bot checks every 60 seconds while at least one tracked download is active, and stops polling once all of them finish. It resumes automatically when you start a new download.

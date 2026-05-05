@@ -32,5 +32,5 @@ CATEGORIES = "hd_hun,hd"
 #   xvidser     Sorozat SD/EN
 CATEGORIES_SERIES = "hdser_hun,hdser"
 QUALITY_FILTER = []     # e.g. ["1080", "2160"] to only show those qualities, or [] for all
-TOP_RESULTS = 5
-MAX_PAGES = 5
+TOP_RESULTS = 5         # how many results to show in Telegram (after sorting by seeders)
+MAX_PAGES = 5           # how many nCore search-result pages to fetch
