@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -13,6 +14,14 @@ SELECTING_TYPE = 0
 SELECTING_RESULT = 1
 
 MAX_MISSING_CHECKS = 10
+CHECK_JOB_NAME = 'check_downloads'
+
+
+def ensure_check_job(application):
+    if not application.job_queue.get_jobs_by_name(CHECK_JOB_NAME):
+        application.job_queue.run_repeating(
+            check_downloads, interval=60, first=10, name=CHECK_JOB_NAME,
+        )
 
 
 async def dl_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -43,7 +52,7 @@ async def type_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await callback.edit_message_text(f'Searching: {search_query}...')
 
     try:
-        results = ncore.search(search_query, config, categories=categories)
+        results = await asyncio.to_thread(ncore.search, search_query, config, categories=categories)
     except Exception as e:
         logging.exception("ncore search failed")
         await callback.edit_message_text(f'Search error: {e}')
@@ -74,9 +83,9 @@ async def result_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await callback.edit_message_text(f'Starting download: {torrent["name"]}...')
 
     try:
-        torrent_data = ncore.download_torrent(torrent['link'], config)
+        torrent_data = await asyncio.to_thread(ncore.download_torrent, torrent['link'], config)
         torrent_hash = compute_infohash(torrent_data)
-        qbittorrent.add_torrent(torrent_data, save_path, config, category)
+        await asyncio.to_thread(qbittorrent.add_torrent, torrent_data, save_path, config, category)
     except Exception as e:
         logging.exception("download failed")
         await callback.edit_message_text(f'Error: {e}')
@@ -88,6 +97,7 @@ async def result_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         'missing': 0,
     }
     logging.info("Tracking torrent hash %s for chat %s", torrent_hash, update.effective_chat.id)
+    ensure_check_job(context.application)
     await callback.edit_message_text(f"Added: {torrent['name']}\nI'll notify you when it's done! 🔔")
     return ConversationHandler.END
 
@@ -107,12 +117,14 @@ async def cancel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def check_downloads(context: ContextTypes.DEFAULT_TYPE):
     tracking = context.bot_data.get('tracking', {})
     if not tracking:
+        context.job.schedule_removal()
+        logging.info("No tracked torrents — stopping check_downloads job")
         return
     logging.info("Checking %d tracked torrent(s)", len(tracking))
     finished = []
     for torrent_hash, entry in tracking.items():
         try:
-            progress = qbittorrent.get_torrent_progress(torrent_hash, config)
+            progress = await asyncio.to_thread(qbittorrent.get_torrent_progress, torrent_hash, config)
             logging.info("  %s -> progress: %s", entry['name'][:40], progress)
             if progress is None:
                 entry['missing'] += 1
@@ -130,11 +142,14 @@ async def check_downloads(context: ContextTypes.DEFAULT_TYPE):
             logging.exception("progress check failed for %s", torrent_hash)
     for torrent_hash in finished:
         del tracking[torrent_hash]
+    if not tracking:
+        context.job.schedule_removal()
+        logging.info("All tracked torrents finished — stopping check_downloads job")
 
 
 async def recent_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        torrents = qbittorrent.get_recent_torrents(config)
+        torrents = await asyncio.to_thread(qbittorrent.get_recent_torrents, config)
     except Exception as e:
         logging.exception("recent torrents failed")
         await update.message.reply_text(f"Error: {e}")

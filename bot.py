@@ -10,7 +10,7 @@ import config
 from handlers import (
     SELECTING_TYPE, SELECTING_RESULT,
     dl_command, type_handler, result_handler,
-    cancel, cancel_callback, check_downloads,
+    cancel, cancel_callback, ensure_check_job,
     recent_command, start_command, help_command, myid_command,
 )
 
@@ -21,10 +21,22 @@ logging.basicConfig(
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
+async def post_init(app):
+    if app.bot_data.get('tracking'):
+        ensure_check_job(app)
+        logging.info("Resuming tracking for %d torrent(s)", len(app.bot_data['tracking']))
+
+
 def main():
     Path("data").mkdir(exist_ok=True)
     persistence = PicklePersistence(filepath="data/bot_data.pickle")
-    app = Application.builder().token(config.TELEGRAM_TOKEN).persistence(persistence).build()
+    app = (
+        Application.builder()
+        .token(config.TELEGRAM_TOKEN)
+        .persistence(persistence)
+        .post_init(post_init)
+        .build()
+    )
 
     allowed = filters.User(user_id=config.ALLOWED_USERS)
 
@@ -48,7 +60,6 @@ def main():
         conversation_timeout=300,
     )
     app.add_handler(conv)
-    app.job_queue.run_repeating(check_downloads, interval=60, first=10)
     logging.info("Bot started. Polling...")
     app.run_polling()
 
